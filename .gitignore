@@ -1,0 +1,15 @@
+.DS_Store
+.gitkeep
+
+app/node_modules/
+app/dist/
+app/.vite/
+app/.cache/
+app/*.log
+app/npm-debug.log*
+app/yarn-debug.log*
+app/yarn-error.log*
+app/pnpm-debug.log*
+
+.env
+.env.*
