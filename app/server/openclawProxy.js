@@ -199,10 +199,10 @@ async function createOpenClawRpcClient() {
     minProtocol: 3,
     maxProtocol: 3,
     client: {
-      id: 'openclaw-control-ui',
+      id: 'gateway-client',
       version: 'dream-planet',
       platform: 'node',
-      mode: 'webchat',
+      mode: 'backend',
     },
     role: 'operator',
     scopes: ['operator.admin', 'operator.read', 'operator.write', 'operator.approvals', 'operator.pairing'],
