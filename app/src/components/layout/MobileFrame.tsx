@@ -24,11 +24,7 @@ export function MobileFrame({ children }: MobileFrameProps) {
         <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[120px] h-[35px] bg-black rounded-full z-50" />
         
         {/* Screen Content */}
-        <div className="h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
-            {children}
-          </div>
-        </div>
+        <div className="h-full">{children}</div>
       </motion.div>
     </div>
   );

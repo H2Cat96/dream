@@ -1,6 +1,10 @@
 import { motion } from 'framer-motion';
 import { Bell, Mic, MoonStar, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { homeDreamNodes } from '../lib/prototypeData';
+import { HomeNotificationSheet } from '../components/home/HomeNotificationSheet';
+import { PlanetStageSheet } from '../components/home/PlanetStageSheet';
+import { VoiceJourneySheet, type VoiceJourneyStage } from '../components/home/VoiceJourneySheet';
 import { StatusBar } from '../components/layout/StatusBar';
 
 type DreamParticle = {
@@ -24,14 +28,17 @@ type DreamNode = {
   dreams: number;
 };
 
-const dreamClusters = [
-  { label: '追月亮', dreams: 18 },
-  { label: '海边鲸歌', dreams: 12 },
-  { label: '会飞的书', dreams: 9 },
-  { label: '糖果雨夜', dreams: 14 },
-  { label: '会说话的云', dreams: 8 },
-  { label: '星星楼梯', dreams: 15 },
-];
+type DreamCluster = {
+  label: string;
+  dreams: number;
+};
+
+const dreamClusters: DreamCluster[] = homeDreamNodes.length > 0
+  ? homeDreamNodes.map((node) => ({
+      label: node.label,
+      dreams: Number(node.dreams) || 0,
+    }))
+  : [{ label: '梦境节点', dreams: 0 }];
 
 const planetStages = [
   { name: '种子星', count: 24 },
@@ -58,9 +65,19 @@ function createParticle(width: number, height: number): DreamParticle {
   };
 }
 
-function createNode(width: number, height: number, index: number): DreamNode {
-  const cluster = dreamClusters[index];
-  const angle = (index / dreamClusters.length) * Math.PI * 2 - 0.7;
+function createNode(width: number, height: number, index: number, clusters: DreamCluster[]): DreamNode {
+  const cluster = clusters[index];
+  if (!cluster) {
+    return {
+      x: width * 0.62,
+      y: height * 0.5,
+      radius: 4,
+      pulseOffset: 0,
+      label: '梦境节点',
+      dreams: 0,
+    };
+  }
+  const angle = (index / Math.max(clusters.length, 1)) * Math.PI * 2 - 0.7;
   const radius = Math.min(width, height) * (0.16 + Math.random() * 0.14);
 
   return {
@@ -106,7 +123,7 @@ function DreamUniverseField({ focused }: { focused: boolean }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       particles = Array.from({ length: 108 }, () => createParticle(width, height));
-      nodes = Array.from({ length: dreamClusters.length }, (_, index) => createNode(width, height, index));
+      nodes = Array.from({ length: dreamClusters.length }, (_, index) => createNode(width, height, index, dreamClusters));
     };
 
     const drawBackground = (time: number) => {
@@ -352,6 +369,10 @@ interface HomePageProps {
 
 export function HomePage({ onOpenParticle }: HomePageProps) {
   const currentDreamCount = 128;
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [isPlanetStageSheetOpen, setIsPlanetStageSheetOpen] = useState(false);
+  const [voiceJourneyOpen, setVoiceJourneyOpen] = useState(false);
+  const [voiceJourneyStage, setVoiceJourneyStage] = useState<VoiceJourneyStage>('idle');
   const [showVoiceHint, setShowVoiceHint] = useState(false);
   const [isNebulaFocused, setIsNebulaFocused] = useState(false);
   const activeStageIndex = planetStages.findIndex((stage, index) => {
@@ -366,16 +387,95 @@ export function HomePage({ onOpenParticle }: HomePageProps) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!window.localStorage.getItem(voiceHintStorageKey)) {
-      setShowVoiceHint(true);
+    try {
+      if (!window.localStorage.getItem(voiceHintStorageKey)) {
+        setShowVoiceHint(true);
+      }
+    } catch {
+      setShowVoiceHint(false);
     }
   }, []);
 
   const dismissVoiceHint = () => {
     setShowVoiceHint(false);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(voiceHintStorageKey, 'true');
+      try {
+        window.localStorage.setItem(voiceHintStorageKey, 'true');
+      } catch {
+        // Ignore storage failures in restricted environments.
+      }
     }
+  };
+
+  useEffect(() => {
+    if (!voiceJourneyOpen) return;
+    if (voiceJourneyStage !== 'transcribing') return;
+
+    const timers: number[] = [];
+
+    timers.push(window.setTimeout(() => setVoiceJourneyStage('saved'), 1200));
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [voiceJourneyOpen, voiceJourneyStage]);
+
+  useEffect(() => {
+    const handleVoiceHoldStart = () => {
+      setShowVoiceHint(false);
+      setNotificationOpen(false);
+      setIsPlanetStageSheetOpen(false);
+      setVoiceJourneyOpen(true);
+      setVoiceJourneyStage('recording');
+    };
+
+    window.addEventListener('dream-voice-hold-start', handleVoiceHoldStart);
+
+    return () => {
+      window.removeEventListener('dream-voice-hold-start', handleVoiceHoldStart);
+    };
+  }, []);
+
+  const openNotificationSheet = () => {
+    setIsPlanetStageSheetOpen(false);
+    setVoiceJourneyOpen(false);
+    setVoiceJourneyStage('idle');
+    setNotificationOpen(true);
+  };
+
+  const closeNotificationSheet = () => {
+    setNotificationOpen(false);
+  };
+
+  const openVoiceJourney = () => {
+    setNotificationOpen(false);
+    setIsPlanetStageSheetOpen(false);
+    setVoiceJourneyOpen(true);
+    setVoiceJourneyStage('recording');
+  };
+
+  const closeVoiceJourney = () => {
+    setVoiceJourneyOpen(false);
+    setVoiceJourneyStage('idle');
+  };
+
+  const saveVoiceJourney = () => {
+    if (voiceJourneyStage === 'saved') {
+      closeVoiceJourney();
+      return;
+    }
+    setVoiceJourneyStage('transcribing');
+  };
+
+  const openPlanetStageSheet = () => {
+    setIsPlanetStageSheetOpen(true);
+    setNotificationOpen(false);
+    setVoiceJourneyOpen(false);
+    setVoiceJourneyStage('idle');
+  };
+
+  const closePlanetStageSheet = () => {
+    setIsPlanetStageSheetOpen(false);
   };
 
   const handleNebulaClick = () => {
@@ -432,7 +532,9 @@ export function HomePage({ onOpenParticle }: HomePageProps) {
             </div>
             <motion.button
               whileTap={{ scale: 0.96 }}
+              onClick={openNotificationSheet}
               className="pointer-events-auto h-9 w-9 rounded-full border border-white/10 bg-white/7 flex items-center justify-center backdrop-blur-md"
+              aria-label="通知中心"
             >
               <Bell className="h-4.5 w-4.5 text-white" />
             </motion.button>
@@ -448,49 +550,22 @@ export function HomePage({ onOpenParticle }: HomePageProps) {
               <br />
               讲给绘梦星球听
             </h1>
-            <p className="mt-2 max-w-[48%] text-[12px] leading-5 text-white/64">
-              你讲出的每一场梦，都会长成星球上的一束新光，还会慢慢变成自己的绘本。
-            </p>
           </div>
 
-          <div className="mt-auto px-5 pb-32">
-            <div className="max-w-[78%] rounded-[24px] border border-white/10 bg-black/18 p-3.5 backdrop-blur-xl shadow-[0_14px_32px_rgba(0,0,0,0.18)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] text-white/54">星球成长进度</p>
-                  <h2 className="mt-1 text-[15px] font-semibold text-white">
-                    现在是「{activeStage.name}」
-                  </h2>
-                  <p className="mt-1.5 text-[12px] leading-5 text-white/66">
-                    再记录 {Math.max(nextStage.count - currentDreamCount, 0)} 场梦，就会长成下一阶段的梦境星球。
-                  </p>
-                </div>
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffe7a1]/16">
-                  <Sparkles className="h-4 w-4 text-[#ffe7a1]" />
-                </div>
-              </div>
-
-              <div className="mt-3 h-1.5 rounded-full bg-white/10">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.max(14, Math.min(stageProgress * 100, 100))}%` }}
-                  transition={{ duration: 0.7, delay: 0.2 }}
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#ffe7a1_0%,#b9c8ff_50%,#c28fff_100%)]"
-                />
-              </div>
-
-              <div className="mt-3 flex gap-1.5 overflow-x-auto scrollbar-hide">
-                {dreamClusters.map((cluster) => (
-                  <div
-                    key={cluster.label}
-                    className="shrink-0 rounded-full border border-white/10 bg-white/6 px-2.5 py-1 text-[11px] text-white/72"
-                  >
-                    {cluster.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {!isPlanetStageSheetOpen && (
+            <button
+              type="button"
+              onClick={openPlanetStageSheet}
+              aria-label="打开星球成长记录"
+              className="pointer-events-auto absolute bottom-32 right-0 flex flex-col items-center gap-1.5 rounded-l-2xl border border-r-0 border-white/12 bg-black/24 px-2.5 py-3 text-white/82 backdrop-blur-xl"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#ffe7a1]" />
+              <span className="flex flex-col items-center text-[11px] font-medium leading-[1.05] tracking-[0.08em]">
+                <span>成</span>
+                <span>长</span>
+              </span>
+            </button>
+          )}
         </div>
       </motion.div>
 
@@ -534,6 +609,29 @@ export function HomePage({ onOpenParticle }: HomePageProps) {
           </div>
         </motion.div>
       )}
+
+      <HomeNotificationSheet
+        open={notificationOpen}
+        onClose={closeNotificationSheet}
+        onStartVoiceJourney={openVoiceJourney}
+      />
+
+      <VoiceJourneySheet
+        open={voiceJourneyOpen}
+        stage={voiceJourneyStage}
+        transcript="我梦到自己在海面上跑，浪花像大滑梯一样好玩。一头巨鲸朝我喷水，喷出来的全是彩虹，它带我游了很远很远，海水喝起来甜甜的，像冰汽水一样。"
+        onClose={closeVoiceJourney}
+        onSave={saveVoiceJourney}
+      />
+
+      <PlanetStageSheet
+        open={isPlanetStageSheetOpen}
+        stageName={activeStage.name}
+        currentDreamCount={currentDreamCount}
+        nextStageCount={nextStage.count}
+        progress={stageProgress}
+        onClose={closePlanetStageSheet}
+      />
     </motion.div>
   );
 }

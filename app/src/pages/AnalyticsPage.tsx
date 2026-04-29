@@ -1,21 +1,31 @@
 import { motion } from 'framer-motion';
 import { ChevronLeft, Settings } from 'lucide-react';
-import { StatusBar } from '../components/layout/StatusBar';
+import { useMemo, useState } from 'react';
 import { MoodReflectionsCard } from '../components/analytics/MoodReflectionsCard';
 import { WeekSelector } from '../components/analytics/WeekSelector';
-import { StatCard } from '../components/analytics/StatCard';
 import { DreamDistributionCard } from '../components/analytics/DreamDistributionCard';
+import { InterpretationSettingsSheet } from '../components/analytics/InterpretationSettingsSheet';
+import { ParentDreamInsightCard } from '../components/analytics/ParentDreamInsightCard';
+import { StatusBar } from '../components/layout/StatusBar';
+import { interpretationMonths } from '../lib/prototypeData';
 
 interface AnalyticsPageProps {
   onBack: () => void;
 }
 
 export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
-  const stats = [
-    { label: '记录总数', value: '128', subLabel: '篇梦境' },
-    { label: '已解释', value: '36/48', subLabel: '待整理 12 篇' },
-    { label: '高频意象', value: '88%', subLabel: '最近反复出现' },
-  ];
+  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [showSettings, setShowSettings] = useState(false);
+
+  const currentMonth = useMemo(
+    () => interpretationMonths.find((month) => month.id === selectedMonth) ?? interpretationMonths[0],
+    [selectedMonth],
+  );
+
+  const monthButtons = useMemo(
+    () => interpretationMonths.map(({ id, label, color, status }) => ({ id, label, color, status })),
+    [],
+  );
 
   return (
     <motion.div
@@ -29,6 +39,8 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
 
       <div className="flex items-center justify-between px-5 py-3">
         <motion.button
+          type="button"
+          aria-label="返回上一页"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
@@ -38,8 +50,11 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
         </motion.button>
         <h1 className="text-lg font-bold tracking-[0.18em] text-neutral-black">释梦</h1>
         <motion.button
+          type="button"
+          aria-label="打开释梦设置"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => setShowSettings(true)}
           className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"
         >
           <Settings className="w-5 h-5 text-neutral-black" />
@@ -47,28 +62,22 @@ export function AnalyticsPage({ onBack }: AnalyticsPageProps) {
       </div>
 
       <div className="mb-3">
-        <MoodReflectionsCard />
+        <MoodReflectionsCard motifs={currentMonth.motifs} tarot={currentMonth.tarot} monthLabel={currentMonth.label} />
       </div>
 
       <div className="mb-3">
-        <WeekSelector />
+        <WeekSelector selectedMonth={selectedMonth} months={monthButtons} onSelect={setSelectedMonth} />
       </div>
 
-      <div className="mb-3 flex gap-2 px-5">
-        {stats.map((stat, index) => (
-          <StatCard
-            key={index}
-            label={stat.label}
-            value={stat.value}
-            subLabel={stat.subLabel}
-            delay={0.4 + index * 0.1}
-          />
-        ))}
-      </div>
+      <DreamDistributionCard monthLabel={currentMonth.label} distribution={currentMonth.distribution} />
 
-      <div>
-        <DreamDistributionCard />
-      </div>
+      <ParentDreamInsightCard />
+
+      <InterpretationSettingsSheet
+        open={showSettings}
+        monthLabel={currentMonth.label}
+        onClose={() => setShowSettings(false)}
+      />
     </motion.div>
   );
 }

@@ -1,24 +1,19 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 
-const monthData = [
-  { month: '1月', color: '#ffd78a', bg: '#fff4df', started: true },
-  { month: '2月', color: '#8fb4ff', bg: '#eaf1ff', started: true },
-  { month: '3月', color: '#cda2ff', bg: '#f4eaff', started: true },
-  { month: '4月', color: '#ff9e9e', bg: '#ffeaea', started: true },
-  { month: '5月', color: '#8ab6f5', bg: '#d9e7ff', started: false },
-  { month: '6月', color: '#a986f6', bg: '#e5d7ff', started: false },
-  { month: '7月', color: '#ffd78a', bg: '#fff4df', started: false },
-  { month: '8月', color: '#8fb4ff', bg: '#eaf1ff', started: false },
-  { month: '9月', color: '#e9648a', bg: '#ffd4e1', started: false },
-  { month: '10月', color: '#cda2ff', bg: '#f4eaff', started: false },
-  { month: '11月', color: '#8ab6f5', bg: '#d9e7ff', started: false },
-  { month: '12月', color: '#ffd78a', bg: '#fff4df', started: false },
-];
+type MonthButton = {
+  id: string;
+  label: string;
+  color: string;
+  status: 'active' | 'locked';
+};
 
-export function WeekSelector() {
-  const [selectedMonth, setSelectedMonth] = useState('4月');
+interface WeekSelectorProps {
+  selectedMonth: string;
+  months: MonthButton[];
+  onSelect: (monthId: string) => void;
+}
 
+export function WeekSelector({ selectedMonth, months, onSelect }: WeekSelectorProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -27,39 +22,34 @@ export function WeekSelector() {
       className="mx-5 overflow-x-auto pb-1 scrollbar-hide"
     >
       <div className="flex min-w-max gap-2">
-        {monthData.map((item) => {
-          const isSelected = selectedMonth === item.month;
-          const isLocked = !item.started;
+        {months.map((month) => {
+          const isSelected = selectedMonth === month.id;
+          const isLocked = month.status === 'locked';
 
           return (
             <motion.button
-              key={item.month}
-              onClick={() => setSelectedMonth(item.month)}
+              key={month.id}
+              type="button"
+              aria-label={month.label}
+              disabled={isLocked}
+              onClick={() => {
+                if (!isLocked) {
+                  onSelect(month.id);
+                }
+              }}
               whileTap={{ scale: 0.95 }}
-              className="flex flex-col items-center"
+              className="flex flex-col items-center disabled:cursor-not-allowed"
             >
               <motion.div
-                className="flex h-9 w-9 items-center justify-center rounded-full border text-[11px] font-semibold"
+                className="flex min-w-[42px] items-center justify-center rounded-full border px-3 py-2 text-[11px] font-semibold"
                 animate={{
-                  backgroundColor: isSelected
-                    ? item.color
-                    : isLocked
-                      ? '#1A1A1A'
-                      : item.bg,
-                  borderColor: isSelected
-                    ? item.color
-                    : isLocked
-                      ? '#1A1A1A'
-                      : 'rgba(30,22,51,0.06)',
-                  color: isSelected
-                    ? '#ffffff'
-                    : isLocked
-                      ? '#ffffff'
-                      : '#3b3350',
+                  backgroundColor: isLocked ? '#1A1A1A' : isSelected ? month.color : '#f4efff',
+                  borderColor: isLocked ? '#1A1A1A' : isSelected ? month.color : 'rgba(30,22,51,0.06)',
+                  color: isLocked || isSelected ? '#ffffff' : '#3b3350',
                 }}
                 transition={{ duration: 0.2 }}
               >
-                {item.month.replace('月', '')}
+                {month.label.replace(' ', '')}
               </motion.div>
             </motion.button>
           );
