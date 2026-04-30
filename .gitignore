@@ -11,5 +11,15 @@ app/yarn-debug.log*
 app/yarn-error.log*
 app/pnpm-debug.log*
 
+particle-fx/node_modules/
+particle-fx/dist/
+particle-fx/.vite/
+particle-fx/.cache/
+particle-fx/*.log
+particle-fx/npm-debug.log*
+particle-fx/yarn-debug.log*
+particle-fx/yarn-error.log*
+particle-fx/pnpm-debug.log*
+
 .env
 .env.*

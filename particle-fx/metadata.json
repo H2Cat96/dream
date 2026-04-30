@@ -1,0 +1,5 @@
+{
+  "name": "Particle FX",
+  "description": "A TouchDesigner-inspired interactive 3D particle effect generator. Upload an image to convert it into a dynamic particle system with adjustable parameters.",
+  "requestFramePermissions": []
+}
